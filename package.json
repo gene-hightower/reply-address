@@ -1,0 +1,32 @@
+{
+  "name": "reply-address",
+  "version": "1.0.0",
+  "description": "Encode an email address and user name into a new local-part",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "npx tsc --build tsconfig.json",
+    "postinstall": "npm run build",
+    "test": "npx mocha dist/test/*-test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gene-hightower/reply-address.git"
+  },
+  "author": "Gene Hightower",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/gene-hightower/reply-address/issues"
+  },
+  "homepage": "https://github.com/gene-hightower/reply-address",
+  "dependencies": {
+    "smtp-address-parser": "git@github.com:gene-hightower/smtp-address-parser.git",
+    "typescript": "^4.2.3"
+  },
+  "devDependencies": {
+    "@types/jest": "^26.0.20",
+    "@types/node": "^14.14.33",
+    "eslint": "*",
+    "mocha": "*"
+  }
+}
