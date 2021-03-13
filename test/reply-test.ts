@@ -10,19 +10,19 @@ const { parse } = require("smtp-address-parser");
 const secret = "Not a real secret, of course.";
 
 const testCases: FromTo[] = [
-    {"mailFrom": "reply@example.com", "rcptToLocalPart": "local-address"},
-    {"mailFrom": "one.reply@example.com", "rcptToLocalPart": "local"},
-    {"mailFrom": "reply@example.com", "rcptToLocalPart": "local"},
-    {"mailFrom": "reply=something@example.com", "rcptToLocalPart": "local"},
+    { mailFrom: "reply@example.com", rcptToLocalPart: "local-address" },
+    { mailFrom: "one.reply@example.com", rcptToLocalPart: "local" },
+    { mailFrom: "reply@example.com", rcptToLocalPart: "local" },
+    { mailFrom: "reply=something@example.com", rcptToLocalPart: "local" },
     // These should force blob mode:
-    {"mailFrom": "reply@example.com", "rcptToLocalPart": "local=address"},
-    {"mailFrom": '"quoted string"@example.com', "rcptToLocalPart": "local"},
-    {"mailFrom": "reply@[127.0.0.1]", "rcptToLocalPart": "local"},
+    { mailFrom: "reply@example.com", rcptToLocalPart: "local=address" },
+    { mailFrom: '"quoted string"@example.com', rcptToLocalPart: "local" },
+    { mailFrom: "reply@[127.0.0.1]", rcptToLocalPart: "local" },
 ];
 
 describe("test encode and decode", function () {
     it("first set", function () {
-        testCases.forEach(testCase => {
+        testCases.forEach((testCase) => {
             // const address = `${testCase.rcptToLocalPart}@duck.com`;
             const encRep = encodeReply(testCase, secret);
             // console.log(encRep);
