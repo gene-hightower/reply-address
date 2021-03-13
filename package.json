@@ -2,8 +2,8 @@
   "name": "reply-address",
   "version": "1.0.0",
   "description": "Encode an email address and user name into a new local-part",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/lib/index.js",
+  "types": "dist/lib/index.d.ts",
   "scripts": {
     "build": "tsc",
     "prepare": "npm run build",
