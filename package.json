@@ -20,6 +20,8 @@
   },
   "homepage": "https://github.com/gene-hightower/reply-address",
   "dependencies": {
+    "base32-decode": "^1.0.0",
+    "base32-encode": "^1.1.1",
     "smtp-address-parser": "git@github.com:gene-hightower/smtp-address-parser.git",
     "typescript": "^4.2.3"
   },
