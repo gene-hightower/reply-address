@@ -25,7 +25,7 @@ describe("test encode and decode", function () {
         testCases.forEach(testCase => {
             // const address = `${testCase.rcptToLocalPart}@duck.com`;
             const encRep = encodeReply(testCase, secret);
-            console.log(encRep);
+            // console.log(encRep);
             const a = parse(`${encRep}@x.y`);
             const decRep = decodeReply(encRep, secret);
             assert.equal(decRep.mailFrom, testCase.mailFrom);
