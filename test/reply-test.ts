@@ -27,6 +27,16 @@ describe("test encode and decode", function () {
         { mailFrom: "reply@[IPv6:::1]", rcptToLocalPart: "local" },
     ];
 
+    it("verify specific encodings", function () {
+        const encRep = encodeReply({ mailFrom: "anybody@mailhog.duck", rcptToLocalPart: "mydisabledalias" }, secret);
+        assert.equal(encRep, "rep=GHFMH8=mydisabledalias=anybody=mailhog.duck");
+        const decRep = decodeReply(encRep, secret);
+        assert.equal(decRep.mailFrom, "anybody@mailhog.duck");
+        assert.equal(decRep.rcptToLocalPart, "mydisabledalias");
+
+        assert.equal(encodeReply({ mailFrom: "x@y.z", rcptToLocalPart: "a" }, secret), "rep=RHGA7M=a=x=y.z");
+    });
+
     it("verify basic operation", function () {
         testCases.forEach((testCase) => {
             const encRep = encodeReply(testCase, secret);
@@ -57,13 +67,20 @@ describe("test encode and decode", function () {
         assert.equal(decodeReply(encRep, secret), undefined);
     });
 
-    it("rudely map to upper case", function () {
+    it("rudely map case", function () {
         const testCase = { mailFrom: "reply@example.com", rcptToLocalPart: "local" };
         const encRep = encodeReply(testCase, secret);
-        // The ignorant will map case, but we should still deal with it.
+
+        // Many email systems will map case, but we should still deal with it.
+
+        // Check that it matches what we put in, except for the case mapping to upper.
         const decRep = decodeReply(encRep.toUpperCase(), secret);
-        // Check that it matches what we put in, except for the case mapping.
         assert.equal(decRep.mailFrom, testCase.mailFrom.toUpperCase());
         assert.equal(decRep.rcptToLocalPart, testCase.rcptToLocalPart.toUpperCase());
+
+        // Check that it matches what we put in, except for the case mapping to lower.
+        const decRepLower = decodeReply(encRep.toLowerCase(), secret);
+        assert.equal(decRepLower.mailFrom, testCase.mailFrom.toLowerCase());
+        assert.equal(decRepLower.rcptToLocalPart, testCase.rcptToLocalPart.toLowerCase());
     });
 });

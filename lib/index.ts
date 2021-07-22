@@ -41,7 +41,7 @@ function decodeBlob(encodedBlob: string, secret: string): FromTo | undefined {
 
     // Check the hash:
     const hashComputed = hashRep(replyInfo, secret);
-    if (hash != hashComputed) {
+    if (hash.toUpperCase() != hashComputed) {
         return; // Malformed reply address.
     }
 
@@ -108,7 +108,7 @@ export function decodeReply(localPart: string, secret: string): FromTo | undefin
     };
 
     const hashComputed = hashRep(replyInfo, secret);
-    if (hash != hashComputed) {
+    if (hash.toUpperCase() != hashComputed) {
         return; // Malformed reply address.
     }
 
