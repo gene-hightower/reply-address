@@ -6,9 +6,12 @@ const util = require("util");
 import { base32Encode, base32Decode } from "@ctrl/ts-base32";
 
 const base32Type = "Crockford"; // <https://www.crockford.com/base32.html>
-const hashCharsToInclude = 6; // How many bytes of hash to use.
-const sep = "=";
-const prefix = `rep${sep}`;
+
+const hashLengthMin = 6; // 1 in a billion
+const hashLengthMax = 10;
+
+const sepChars = "_=";
+
 const sepBlob = "\x00";
 
 export interface FromTo {
@@ -22,7 +25,7 @@ function hashRep(replyInfo: FromTo, secret: string): string {
     hash.update(secret);
     hash.update(replyInfo.mailFrom.toLowerCase());
     hash.update(replyInfo.rcptToLocalPart.toLowerCase());
-    return base32Encode(hash.digest(), base32Type).substring(0, hashCharsToInclude);
+    return base32Encode(hash.digest(), base32Type).substring(0, hashLengthMin).toLowerCase();
 }
 
 function decodeBlob(encodedBlob: string, secret: string): FromTo | undefined {
@@ -41,7 +44,7 @@ function decodeBlob(encodedBlob: string, secret: string): FromTo | undefined {
 
     // Check the hash:
     const hashComputed = hashRep(replyInfo, secret);
-    if (hash.toUpperCase() != hashComputed) {
+    if (hash.toLowerCase() != hashComputed) {
         return; // Malformed reply address.
     }
 
@@ -51,68 +54,85 @@ function decodeBlob(encodedBlob: string, secret: string): FromTo | undefined {
 function encodeBlob(replyInfo: FromTo, secret: string): string {
     const hash = hashRep(replyInfo, secret);
     const blob = `${hash}${sepBlob}${replyInfo.rcptToLocalPart}${sepBlob}${replyInfo.mailFrom}`;
-    return `${prefix}${base32Encode(Buffer.from(blob), base32Type)}`;
+    return `${base32Encode(Buffer.from(blob), base32Type).toLowerCase()}`;
 }
 
 function isPureBase32(s: string): boolean {
     return /^[0-9A-Ha-hJ-Kj-kM-Nm-nP-Tp-tV-Zv-z]+$/.test(s);
 }
 
-export function decodeReply(localPart: string, secret: string): FromTo | undefined {
-    // Validate the input local-part
-    smtpAddressParser.parse(`${localPart}@x.y`);
+function tryDecode(addr: string, secret: string, sepChar: string): FromTo | undefined {
+    // {mail_from.local}={mail_from.domain}={rcpt_to_local_part}={hash}
 
-    // Check for and remove reply address prefix.
-    const pfx = localPart.substr(0, prefix.length);
-    if (!pfx.toLowerCase().startsWith(prefix)) {
-        return; // Not a reply address.
+    const hash_sep = addr.lastIndexOf(sepChar);
+    if (hash_sep === -1) return;
+    const hash_pos = hash_sep + 1;
+    const hash_len = addr.length - hash_pos;
+    if (hash_len < hashLengthMin || hash_len > hashLengthMax) return;
+
+    const hash = addr.substr(hash_pos, hash_len);
+
+    // The hash part must look like a hash
+    if (!isPureBase32(hash)) return;
+
+    const rcpt_loc_sep = addr.substr(0, hash_sep).lastIndexOf(sepChar);
+    if (rcpt_loc_sep === -1) return;
+    const rcpt_loc_pos = rcpt_loc_sep + 1;
+    const rcpt_loc_len = hash_sep - rcpt_loc_pos;
+    const rcpt_loc = addr.substr(rcpt_loc_pos, rcpt_loc_len);
+
+    const mail_from_dom_sep = addr.substr(0, rcpt_loc_sep).lastIndexOf(sepChar);
+    if (mail_from_dom_sep === -1) return;
+    const mail_from_dom_pos = mail_from_dom_sep + 1;
+    const mail_from_dom_len = rcpt_loc_sep - mail_from_dom_pos;
+    const mail_from_dom = addr.substr(mail_from_dom_pos, mail_from_dom_len);
+
+    const mail_from_loc = addr.substr(0, mail_from_dom_sep);
+    const mail_from = `${mail_from_loc}@${mail_from_dom}`;
+
+    // The mail_from part must be a valid Mailbox address.
+    try {
+        smtpAddressParser.parse(mail_from);
+    } catch (e) {
+        return;
     }
-    const rep = localPart.substr(prefix.length);
-
-    // What type of reply address do we have?
-    if (isPureBase32(rep)) {
-        // If everything after prefix is base32 we have a blob:
-        return decodeBlob(rep, secret);
-    }
-
-    // *** reply address layout ***
-    // The prefix (rep=) has been removed, reply address is now:
-    // {hash}={rcpt_to_local_part}={mail_from.local}={mail_from.domain}
-    //       ^1st                 ^2nd              ^last
-    // The mail_from.local can contain separator characters.
-    // See the return value from encodeReply() below...
-
-    const firstSep = rep.indexOf(sep);
-    const secondSep = rep.substr(firstSep + 1).indexOf(sep) + firstSep + 1;
-    const lastSep = rep.lastIndexOf(sep);
-
-    if (firstSep == lastSep || secondSep == lastSep) {
-        return; // Malformed reply address, not enough separators.
-    }
-
-    const rcptToPos = firstSep + 1;
-    const mfLocPos = secondSep + 1;
-    const mfDomPos = lastSep + 1;
-
-    const rcptToLen = secondSep - rcptToPos;
-    const mfLocLen = lastSep - mfLocPos;
-
-    const hash = rep.substr(0, firstSep);
-    const rcptToLoc = rep.substr(rcptToPos, rcptToLen);
-    const mailFromLoc = rep.substr(mfLocPos, mfLocLen);
-    const mailFromDom = rep.substr(mfDomPos);
 
     const replyInfo = {
-        mailFrom: `${mailFromLoc}@${mailFromDom}`,
-        rcptToLocalPart: rcptToLoc,
+        mailFrom: mail_from,
+        rcptToLocalPart: rcpt_loc,
     };
 
     const hashComputed = hashRep(replyInfo, secret);
-    if (hash.toUpperCase() != hashComputed) {
-        return; // Malformed reply address.
+    if (hash.toLowerCase() != hashComputed) {
+        return;
     }
 
     return replyInfo;
+}
+
+export function decodeReply(localPart: string, secret: string): FromTo | undefined {
+    try {
+        // Validate the input local-part
+        smtpAddressParser.parse(`${localPart}@x.y`);
+    } catch (e) {
+        return;
+    }
+
+    // What type of reply address do we have?
+    if (isPureBase32(localPart)) {
+        // If everything is base32 we might have a blob:
+        if (localPart.length > 25) {
+            return decodeBlob(localPart, secret);
+        }
+        return; // Not a reply address.
+    }
+
+    for (const sepChar of sepChars) {
+        const replyInfo = tryDecode(localPart, secret, sepChar);
+        if (replyInfo) return replyInfo;
+    }
+
+    return;
 }
 
 export function encodeReply(replyInfo: FromTo, secret: string): string {
@@ -132,15 +152,13 @@ export function encodeReply(replyInfo: FromTo, secret: string): string {
         return encodeBlob(replyInfo, secret);
     }
 
-    // If rcptToLocalPart contains a sep fall back to blob encoding.
-    if (replyInfo.rcptToLocalPart.includes(sep)) {
-        return encodeBlob(replyInfo, secret);
-    }
-
     const hash = hashRep(replyInfo, secret);
 
-    // *** reply address layout ***
-    // See the code in decodeReply above.
+    for (const sepChar of sepChars) {
+        if (!replyInfo.rcptToLocalPart.includes(sepChar)) {
+            return `${mailFrom.localPart.DotString}${sepChar}${mailFrom.domainPart.DomainName}${sepChar}${replyInfo.rcptToLocalPart}${sepChar}${hash}`;
+        }
+    }
 
-    return `${prefix}${hash}${sep}${replyInfo.rcptToLocalPart}${sep}${mailFrom.localPart.DotString}${sep}${mailFrom.domainPart.DomainName}`;
+    return encodeBlob(replyInfo, secret);
 }

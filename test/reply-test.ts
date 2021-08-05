@@ -29,12 +29,12 @@ describe("test encode and decode", function () {
 
     it("verify specific encodings", function () {
         const encRep = encodeReply({ mailFrom: "anybody@mailhog.duck", rcptToLocalPart: "mydisabledalias" }, secret);
-        assert.equal(encRep, "rep=GHFMH8=mydisabledalias=anybody=mailhog.duck");
+        assert.equal(encRep, "anybody_mailhog.duck_mydisabledalias_ghfmh8");
         const decRep = decodeReply(encRep, secret);
         assert.equal(decRep.mailFrom, "anybody@mailhog.duck");
         assert.equal(decRep.rcptToLocalPart, "mydisabledalias");
 
-        assert.equal(encodeReply({ mailFrom: "x@y.z", rcptToLocalPart: "a" }, secret), "rep=RHGA7M=a=x=y.z");
+        assert.equal(encodeReply({ mailFrom: "x@y.z", rcptToLocalPart: "a" }, secret), "x_y.z_a_rhga7m");
     });
 
     it("verify basic operation", function () {
