@@ -28,7 +28,7 @@ function hashRep(replyInfo: FromTo, secret: string): string {
     return base32Encode(hash.digest(), base32Type).substring(0, hashLengthMin).toLowerCase();
 }
 
-function decodeBlob(encodedBlob: string, secret: string): FromTo | undefined {
+function decodeBlob(encodedBlob: string, secret: string): FromTo | null {
     // Decode the blob:
     const blobArrayBuffer = base32Decode(encodedBlob, base32Type);
     const blob = new util.TextDecoder("utf-8").decode(blobArrayBuffer);
@@ -45,7 +45,7 @@ function decodeBlob(encodedBlob: string, secret: string): FromTo | undefined {
     // Check the hash:
     const hashComputed = hashRep(replyInfo, secret);
     if (hash.toLowerCase() != hashComputed) {
-        return; // Malformed reply address.
+        return null; // Malformed reply address.
     }
 
     return replyInfo;
@@ -61,28 +61,34 @@ function isPureBase32(s: string): boolean {
     return /^[0-9A-Ha-hJ-Kj-kM-Nm-nP-Tp-tV-Zv-z]+$/.test(s);
 }
 
-function tryDecode(addr: string, secret: string, sepChar: string): FromTo | undefined {
+function tryDecode(addr: string, secret: string, sepChar: string): FromTo | null {
     // {mail_from.local}={mail_from.domain}={rcpt_to_local_part}={hash}
 
     const hash_sep = addr.lastIndexOf(sepChar);
-    if (hash_sep === -1) return;
+    if (hash_sep === -1) return null;
     const hash_pos = hash_sep + 1;
     const hash_len = addr.length - hash_pos;
-    if (hash_len < hashLengthMin || hash_len > hashLengthMax) return;
+    if (hash_len < hashLengthMin || hash_len > hashLengthMax) {
+        return null;
+    }
 
     const hash = addr.substr(hash_pos, hash_len);
 
     // The hash part must look like a hash
-    if (!isPureBase32(hash)) return;
+    if (!isPureBase32(hash)) return null;
 
     const rcpt_loc_sep = addr.substr(0, hash_sep).lastIndexOf(sepChar);
-    if (rcpt_loc_sep === -1) return;
+    if (rcpt_loc_sep === -1) {
+        return null;
+    }
     const rcpt_loc_pos = rcpt_loc_sep + 1;
     const rcpt_loc_len = hash_sep - rcpt_loc_pos;
     const rcpt_loc = addr.substr(rcpt_loc_pos, rcpt_loc_len);
 
     const mail_from_dom_sep = addr.substr(0, rcpt_loc_sep).lastIndexOf(sepChar);
-    if (mail_from_dom_sep === -1) return;
+    if (mail_from_dom_sep === -1) {
+        return null;
+    }
     const mail_from_dom_pos = mail_from_dom_sep + 1;
     const mail_from_dom_len = rcpt_loc_sep - mail_from_dom_pos;
     const mail_from_dom = addr.substr(mail_from_dom_pos, mail_from_dom_len);
@@ -94,7 +100,7 @@ function tryDecode(addr: string, secret: string, sepChar: string): FromTo | unde
     try {
         smtpAddressParser.parse(mail_from);
     } catch (e) {
-        return;
+        return null;
     }
 
     const replyInfo = {
@@ -104,18 +110,18 @@ function tryDecode(addr: string, secret: string, sepChar: string): FromTo | unde
 
     const hashComputed = hashRep(replyInfo, secret);
     if (hash.toLowerCase() != hashComputed) {
-        return;
+        return null;
     }
 
     return replyInfo;
 }
 
-export function decodeReply(localPart: string, secret: string): FromTo | undefined {
+export function decodeReply(localPart: string, secret: string): FromTo | null {
     try {
         // Validate the input local-part
         smtpAddressParser.parse(`${localPart}@x.y`);
     } catch (e) {
-        return;
+        return null;
     }
 
     // What type of reply address do we have?
@@ -124,7 +130,7 @@ export function decodeReply(localPart: string, secret: string): FromTo | undefin
         if (localPart.length > 25) {
             return decodeBlob(localPart, secret);
         }
-        return; // Not a reply address.
+        return null; // Not a reply address.
     }
 
     for (const sepChar of sepChars) {
@@ -132,7 +138,7 @@ export function decodeReply(localPart: string, secret: string): FromTo | undefin
         if (replyInfo) return replyInfo;
     }
 
-    return;
+    return null;
 }
 
 export function encodeReply(replyInfo: FromTo, secret: string): string {
