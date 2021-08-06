@@ -10,6 +10,17 @@ const { parse } = require("smtp-address-parser");
 const secret = "Not a real secret, of course.";
 
 describe("test encode and decode", function () {
+    const y0 = { mailFrom: "x@y.z", rcptToLocalPart: "a" };
+    const x0 = decodeReply("rep=RHGA7M=a=x=y.z", secret);
+    assert.deepStrictEqual(x0, y0);
+
+    const y1 = { mailFrom: "x@y.z", rcptToLocalPart: "a=a" };
+    const x1 = decodeReply("rep=6NBM8PA4AR062FB101W40Y9EF8", secret);
+    assert.deepStrictEqual(x1, y1);
+
+    const z1 = decodeReply("rep=6nbm8pa4ar062fb101w40y9ef8", secret);
+    assert.deepStrictEqual(x1, z1);
+
     const testCases: FromTo[] = [
         // Normal cases.
         { mailFrom: "reply@example.com", rcptToLocalPart: "local" },

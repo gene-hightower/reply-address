@@ -10,6 +10,9 @@ const base32Type = "Crockford"; // <https://www.crockford.com/base32.html>
 const hashLengthMin = 6; // 1 in a billion
 const hashLengthMax = 10;
 
+const sep = "="; // legcay format
+const prefix = `rep${sep}`; // legcay format
+
 const sepChars = "_=";
 
 const sepBlob = "\x00";
@@ -116,12 +119,70 @@ function tryDecode(addr: string, secret: string, sepChar: string): FromTo | null
     return replyInfo;
 }
 
+// Legacy format reply address with the REP= prefix. We no longer
+// generates these addresses, but we continue to decode them in a
+// compatable way.
+
+export function oldDecodeReply(rep: string, secret: string): FromTo | null {
+    if (isPureBase32(rep)) {
+        return decodeBlob(rep, secret);
+    }
+
+    // *** legacy reply address layout ***
+    // The prefix (rep=) has been removed, reply address is now:
+    // {hash}={rcpt_to_local_part}={mail_from.local}={mail_from.domain}
+    //       ^1st                 ^2nd              ^last
+    // The mail_from.local can contain separator characters.
+    // See the return value from encodeReply() below...
+
+    const sep = "=";
+
+    const firstSep = rep.indexOf(sep);
+    const secondSep = rep.substr(firstSep + 1).indexOf(sep) + firstSep + 1;
+    const lastSep = rep.lastIndexOf(sep);
+
+    if (firstSep == lastSep || secondSep == lastSep) {
+        return null; // Malformed reply address, not enough separators.
+    }
+
+    const rcptToPos = firstSep + 1;
+    const mfLocPos = secondSep + 1;
+    const mfDomPos = lastSep + 1;
+
+    const rcptToLen = secondSep - rcptToPos;
+    const mfLocLen = lastSep - mfLocPos;
+
+    const hash = rep.substr(0, firstSep);
+    const rcptToLoc = rep.substr(rcptToPos, rcptToLen);
+    const mailFromLoc = rep.substr(mfLocPos, mfLocLen);
+    const mailFromDom = rep.substr(mfDomPos);
+
+    const replyInfo = {
+        mailFrom: `${mailFromLoc}@${mailFromDom}`,
+        rcptToLocalPart: rcptToLoc,
+    };
+
+    const hashComputed = hashRep(replyInfo, secret);
+    if (hash.toLowerCase() != hashComputed) {
+        return null; // Malformed reply address.
+    }
+
+    return replyInfo;
+}
+
 export function decodeReply(localPart: string, secret: string): FromTo | null {
     try {
         // Validate the input local-part
         smtpAddressParser.parse(`${localPart}@x.y`);
     } catch (e) {
         return null;
+    }
+
+    // Check for legacy reply format.
+    const pfx = localPart.substr(0, prefix.length);
+    if (pfx.toLowerCase().startsWith(prefix)) {
+        const rep = localPart.substr(prefix.length);
+        return oldDecodeReply(rep, secret);
     }
 
     // What type of reply address do we have?
