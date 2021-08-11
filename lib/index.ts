@@ -227,6 +227,11 @@ export function encodeReply(replyInfo: FromTo, secret: string): string {
         return encodeBlob(replyInfo, secret);
     }
 
+    // If the rcptToLocalPart is a quoted-string, fall back to blob encoding.
+    if (loc.localPart.QuotedString) {
+        return encodeBlob(replyInfo, secret);
+    }
+
     const hash = hashRep(replyInfo, secret);
 
     for (const sepChar of sepChars) {
