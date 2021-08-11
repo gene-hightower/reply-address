@@ -65,6 +65,8 @@ function isPureBase32(s: string): boolean {
 }
 
 function tryDecode(addr: string, secret: string, sepChar: string): FromTo | null {
+    // {mail_from.local}=at={mail_from.domain}={rcpt_to_local_part}={hash}
+    //  or
     // {mail_from.local}={mail_from.domain}={rcpt_to_local_part}={hash}
 
     const hash_sep = addr.lastIndexOf(sepChar);
@@ -96,7 +98,13 @@ function tryDecode(addr: string, secret: string, sepChar: string): FromTo | null
     const mail_from_dom_len = rcpt_loc_sep - mail_from_dom_pos;
     const mail_from_dom = addr.substr(mail_from_dom_pos, mail_from_dom_len);
 
-    const mail_from_loc = addr.substr(0, mail_from_dom_sep);
+    var mail_from_loc = addr.substr(0, mail_from_dom_sep);
+
+    // Check if the local part ends with _at and remove it.
+    if (mail_from_loc.toLowerCase().endsWith(`${sepChar}at`)) {
+        mail_from_loc = addr.substr(0, mail_from_dom_sep - 3);
+    }
+
     const mail_from = `${mail_from_loc}@${mail_from_dom}`;
 
     // The mail_from part must be a valid Mailbox address.
@@ -223,7 +231,7 @@ export function encodeReply(replyInfo: FromTo, secret: string): string {
 
     for (const sepChar of sepChars) {
         if (!replyInfo.rcptToLocalPart.includes(sepChar)) {
-            return `${mailFrom.localPart.DotString}${sepChar}${mailFrom.domainPart.DomainName}${sepChar}${replyInfo.rcptToLocalPart}${sepChar}${hash}`;
+            return `${mailFrom.localPart.DotString}${sepChar}at${sepChar}${mailFrom.domainPart.DomainName}${sepChar}${replyInfo.rcptToLocalPart}${sepChar}${hash}`;
         }
     }
 
