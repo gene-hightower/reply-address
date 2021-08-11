@@ -21,13 +21,16 @@ describe("test encode and decode", function () {
     const z1 = decodeReply("rep=6nbm8pa4ar062fb101w40y9ef8", secret);
     assert.deepStrictEqual(x1, z1);
 
-    assert.deepStrictEqual(encodeReply({mailFrom: "x@y.z", rcptToLocalPart:"a"}, secret), "x_at_y.z_a_rhga7m");
-    assert.deepStrictEqual(encodeReply({mailFrom: "x_x@y.z", rcptToLocalPart:"a"}, secret), "x_x_at_y.z_a_4797dj");
-    assert.deepStrictEqual(encodeReply({mailFrom: "x=x@y.z", rcptToLocalPart:"a"}, secret), "x=x_at_y.z_a_a0dt6k");
-    assert.deepStrictEqual(encodeReply({mailFrom: "x=x@y.z", rcptToLocalPart:"a_a"}, secret), "x=x=at=y.z=a_a=2a2qpd");
-    assert.deepStrictEqual(encodeReply({mailFrom: "x.x@y.z", rcptToLocalPart:"a"}, secret), "x.x_at_y.z_a_9avgdj");
-    assert.deepStrictEqual(encodeReply({mailFrom: "x@y.z", rcptToLocalPart:"a=a"}, secret), "x_at_y.z_a=a_5wdydv");
-    assert.deepStrictEqual(encodeReply({mailFrom: "x@y.z", rcptToLocalPart:"a_a"}, secret), "x=at=y.z=a_a=3d8qs3");
+    assert.deepStrictEqual(encodeReply({ mailFrom: "x@y.z", rcptToLocalPart: "a" }, secret), "x_at_y.z_a_rhga7m");
+    assert.deepStrictEqual(encodeReply({ mailFrom: "x_x@y.z", rcptToLocalPart: "a" }, secret), "x_x_at_y.z_a_4797dj");
+    assert.deepStrictEqual(encodeReply({ mailFrom: "x=x@y.z", rcptToLocalPart: "a" }, secret), "x=x_at_y.z_a_a0dt6k");
+    assert.deepStrictEqual(
+        encodeReply({ mailFrom: "x=x@y.z", rcptToLocalPart: "a_a" }, secret),
+        "x=x=at=y.z=a_a=2a2qpd"
+    );
+    assert.deepStrictEqual(encodeReply({ mailFrom: "x.x@y.z", rcptToLocalPart: "a" }, secret), "x.x_at_y.z_a_9avgdj");
+    assert.deepStrictEqual(encodeReply({ mailFrom: "x@y.z", rcptToLocalPart: "a=a" }, secret), "x_at_y.z_a=a_5wdydv");
+    assert.deepStrictEqual(encodeReply({ mailFrom: "x@y.z", rcptToLocalPart: "a_a" }, secret), "x=at=y.z=a_a=3d8qs3");
 
     const testCases: FromTo[] = [
         // Normal cases.
