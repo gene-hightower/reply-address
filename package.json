@@ -1,6 +1,6 @@
 {
   "name": "reply-address",
-  "version": "2.0.2",
+  "version": "3.0.0",
   "description": "Encode an email address and user name into a new local-part",
   "main": "dist/lib/index.js",
   "types": "dist/lib/index.d.ts",

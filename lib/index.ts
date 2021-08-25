@@ -65,37 +65,41 @@ function isPureBase32(s: string): boolean {
 }
 
 function tryDecode(addr: string, secret: string, sepChar: string): FromTo | null {
-    // {mail_from.local}=at={mail_from.domain}={rcpt_to_local_part}={hash}
+    // {mail_from.local}=at={mail_from.domain}={hash}={rcpt_to_local_part}
     //  or
-    // {mail_from.local}={mail_from.domain}={rcpt_to_local_part}={hash}
+    // {mail_from.local}={mail_from.domain}={hash}={rcpt_to_local_part}
 
-    const hash_sep = addr.lastIndexOf(sepChar);
-    if (hash_sep === -1) return null;
+    const rcpt_to_loc_sep = addr.lastIndexOf(sepChar);
+    if (rcpt_to_loc_sep === -1) {
+        return null;
+    }
+    const rcpt_to_loc_pos = rcpt_to_loc_sep + 1;
+    const rcpt_to_loc_len = addr.length - rcpt_to_loc_pos;
+
+    const rcpt_loc = addr.substr(rcpt_to_loc_pos, rcpt_to_loc_len);
+
+    const hash_sep = addr.substr(0, rcpt_to_loc_sep).lastIndexOf(sepChar);
+    if (hash_sep === -1) {
+        return null;
+    }
     const hash_pos = hash_sep + 1;
-    const hash_len = addr.length - hash_pos;
+    const hash_len = rcpt_to_loc_sep - hash_pos;
     if (hash_len < hashLengthMin || hash_len > hashLengthMax) {
         return null;
     }
-
     const hash = addr.substr(hash_pos, hash_len);
-
     // The hash part must look like a hash
-    if (!isPureBase32(hash)) return null;
-
-    const rcpt_loc_sep = addr.substr(0, hash_sep).lastIndexOf(sepChar);
-    if (rcpt_loc_sep === -1) {
+    if (!isPureBase32(hash)) {
         return null;
     }
-    const rcpt_loc_pos = rcpt_loc_sep + 1;
-    const rcpt_loc_len = hash_sep - rcpt_loc_pos;
-    const rcpt_loc = addr.substr(rcpt_loc_pos, rcpt_loc_len);
 
-    const mail_from_dom_sep = addr.substr(0, rcpt_loc_sep).lastIndexOf(sepChar);
+    const mail_from_dom_sep = addr.substr(0, hash_sep).lastIndexOf(sepChar);
     if (mail_from_dom_sep === -1) {
         return null;
     }
+
     const mail_from_dom_pos = mail_from_dom_sep + 1;
-    const mail_from_dom_len = rcpt_loc_sep - mail_from_dom_pos;
+    const mail_from_dom_len = hash_sep - mail_from_dom_pos;
     const mail_from_dom = addr.substr(mail_from_dom_pos, mail_from_dom_len);
 
     var mail_from_loc = addr.substr(0, mail_from_dom_sep);
@@ -236,7 +240,7 @@ export function encodeReply(replyInfo: FromTo, secret: string): string {
 
     for (const sepChar of sepChars) {
         if (!replyInfo.rcptToLocalPart.includes(sepChar)) {
-            return `${mailFrom.localPart.DotString}${sepChar}at${sepChar}${mailFrom.domainPart.DomainName}${sepChar}${replyInfo.rcptToLocalPart}${sepChar}${hash}`;
+            return `${mailFrom.localPart.DotString}${sepChar}at${sepChar}${mailFrom.domainPart.DomainName}${sepChar}${hash}${sepChar}${replyInfo.rcptToLocalPart}`;
         }
     }
 
