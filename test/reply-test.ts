@@ -10,6 +10,12 @@ const { parse } = require("smtp-address-parser");
 const secret = "Not a real secret, of course.";
 
 describe("test encode and decode", function () {
+    console.log(`${encodeReply({ mailFrom: "random@mailhog.duck", rcptToLocalPart: "duckuser" }, secret)}`);
+
+    const y00 = { mailFrom: "x@y.z", rcptToLocalPart: "a" };
+    const x00 = decodeReply("x_at_y.z_a", secret);
+    assert.deepStrictEqual(x00, y00);
+
     const y0 = { mailFrom: "x@y.z", rcptToLocalPart: "a" };
     const x0 = decodeReply("rep=RHGA7M=a=x=y.z", secret);
     assert.deepStrictEqual(x0, y0);

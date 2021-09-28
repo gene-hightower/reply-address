@@ -78,18 +78,26 @@ function tryDecode(addr: string, secret: string, sepChar: string): FromTo | null
 
     const rcpt_loc = addr.substr(rcpt_to_loc_pos, rcpt_to_loc_len);
 
-    const hash_sep = addr.substr(0, rcpt_to_loc_sep).lastIndexOf(sepChar);
+    const { hash_sep, hash } = (function () {
+        const sep = addr.substr(0, rcpt_to_loc_sep).lastIndexOf(sepChar);
+        if (sep === -1) {
+            return { hash_sep: -1, hash: null };
+        }
+        const hash_pos = sep + 1;
+        const hash_len = rcpt_to_loc_sep - hash_pos;
+        if (hash_len < hashLengthMin || hash_len > hashLengthMax) {
+            return { hash_sep: rcpt_to_loc_sep, hash: null };
+        }
+        const hash = addr.substr(hash_pos, hash_len);
+        // The hash part must look like a hash
+        if (!isPureBase32(hash)) {
+            return { hash_sep: rcpt_to_loc_sep, hash: null };
+        }
+
+        return { hash_sep: sep, hash };
+    })();
+
     if (hash_sep === -1) {
-        return null;
-    }
-    const hash_pos = hash_sep + 1;
-    const hash_len = rcpt_to_loc_sep - hash_pos;
-    if (hash_len < hashLengthMin || hash_len > hashLengthMax) {
-        return null;
-    }
-    const hash = addr.substr(hash_pos, hash_len);
-    // The hash part must look like a hash
-    if (!isPureBase32(hash)) {
         return null;
     }
 
@@ -123,9 +131,11 @@ function tryDecode(addr: string, secret: string, sepChar: string): FromTo | null
         rcptToLocalPart: rcpt_loc,
     };
 
-    const hashComputed = hashRep(replyInfo, secret);
-    if (hash.toLowerCase() != hashComputed) {
-        return null;
+    if (hash) {
+        const hashComputed = hashRep(replyInfo, secret);
+        if (hash.toLowerCase() != hashComputed) {
+            return null;
+        }
     }
 
     return replyInfo;
@@ -135,7 +145,7 @@ function tryDecode(addr: string, secret: string, sepChar: string): FromTo | null
 // generates these addresses, but we continue to decode them in a
 // compatable way.
 
-export function oldDecodeReply(rep: string, secret: string): FromTo | null {
+function oldDecodeReply(rep: string, secret: string): FromTo | null {
     if (isPureBase32(rep)) {
         return decodeBlob(rep, secret);
     }
