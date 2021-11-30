@@ -256,3 +256,42 @@ export function encodeReply(replyInfo: FromTo, secret: string): string {
 
     return encodeBlob(replyInfo, secret);
 }
+
+export function encodeBounce(id: number, secret: string): string {
+    const ut = Date.now() / 1000;
+    const today = Math.trunc(ut / (60 * 60 * 24));
+
+    const payload = `${id}=${today}`;
+
+    const hash = crypto.createHash("sha256");
+    hash.update(secret);
+    hash.update(payload);
+    const hsh = base32Encode(hash.digest(), base32Type).substring(0, 6).toLowerCase();
+
+    return `Bounce0=${payload}=${hsh}`;
+}
+
+export function decodeBounce(localPart: string, secret: string): Number | null {
+    const ut = Date.now() / 1000;
+    const today = Math.trunc(ut / (60 * 60 * 24));
+
+    const res = localPart.match(/Bounce0=(\d{1,9})=(\d{5})=([0-9A-HJ-KM-NP-TV-Z]{6})/i);
+
+    if (!res) return null;
+
+    const id = Number(res[1]);
+    const day = Number(res[2]);
+    const hsh = res[3];
+
+    const payload = `${id}=${day}`;
+
+    const hash = crypto.createHash("sha256");
+    hash.update(secret);
+    hash.update(payload);
+    const hsh_computed = base32Encode(hash.digest(), base32Type).substring(0, 6).toLowerCase();
+
+    if (hsh !== hsh_computed) return null;
+    if (day + 7 < today) return null; // too old
+
+    return id;
+}

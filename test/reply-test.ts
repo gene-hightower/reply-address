@@ -2,14 +2,42 @@
 
 const assert = require("assert");
 
-const { encodeReply, decodeReply } = require("../lib/index");
+const { encodeReply, decodeReply, encodeBounce, decodeBounce } = require("../lib/index");
 import type { FromTo } from "../lib/index";
 
 const { parse } = require("smtp-address-parser");
 
 const secret = "Not a real secret, of course.";
 
-describe("test encode and decode", function () {
+describe("test bounce encode and decode", function () {
+    it("working encode and decode", function () {
+        assert.equal(decodeBounce(encodeBounce(9, secret), secret), 9);
+        assert.equal(decodeBounce(encodeBounce(999999999, secret), secret), 999999999);
+    });
+    it("test decode failures", function () {
+        const enc = encodeBounce(99, secret);
+
+        const res = enc.match(/Bounce0=(\d{1,9})=(\d{5})=([0-9A-HJ-KM-NP-TV-Z]{6})/i);
+        assert(res);
+
+        const id = Number(res[1]);
+        const day = Number(res[2]);
+        const hsh = res[3];
+
+        assert.equal(decodeBounce(`Bounce0=${id}=${day}=${hsh}`, secret), 99);
+
+        // too old
+        assert.equal(decodeBounce(`Bounce0=${id}=${day - 9}=${hsh}`, secret), null);
+        // different id
+        assert.equal(decodeBounce(`Bounce0=${id + 1}=${day}=${hsh}`, secret), null);
+        // bad hash
+        assert.equal(decodeBounce(`Bounce0=${id}=${day}=abc123`, secret), null);
+        // bad syntax
+        assert.equal(decodeBounce(`XYZ=${id}=${day}=${hsh}`, secret), null);
+    });
+});
+
+describe("test reply encode and decode", function () {
     console.log(`${encodeReply({ mailFrom: "random@mailhog.duck", rcptToLocalPart: "duckuser" }, secret)}`);
 
     const y00 = { mailFrom: "x@y.z", rcptToLocalPart: "a" };
